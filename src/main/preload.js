@@ -1,6 +1,6 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('api', {
+window.api = {
   createSession: (opts) => ipcRenderer.invoke('session:create', opts),
   writeSession: (id, data) => ipcRenderer.invoke('session:write', { id, data }),
   resizeSession: (id, cols, rows) => ipcRenderer.invoke('session:resize', { id, cols, rows }),
@@ -21,11 +21,4 @@ contextBridge.exposeInMainWorld('api', {
   },
   removeDataListener: (wrapper) => ipcRenderer.removeListener('session:data', wrapper),
   removeExitListener: (wrapper) => ipcRenderer.removeListener('session:exit', wrapper),
-});
-
-// Expose xterm modules to renderer (only available in preload context)
-contextBridge.exposeInMainWorld('xterm', {
-  Terminal: require('@xterm/xterm').Terminal,
-  FitAddon: require('@xterm/addon-fit').FitAddon,
-  WebLinksAddon: require('@xterm/addon-web-links').WebLinksAddon,
-});
+};

@@ -1,27 +1,28 @@
-const { Terminal, FitAddon, WebLinksAddon } = window.xterm;
+const { Terminal } = require('@xterm/xterm');
+const { FitAddon } = require('@xterm/addon-fit');
+const { WebLinksAddon } = require('@xterm/addon-web-links');
 
 // ============ Agent presets (platform-aware) ============
 const IS_WIN = window.api.platform === 'win32';
 const DEFAULT_AGENTS = [
-  { id: 'claude',   name: 'Claude Code',   icon: '🟠', command: 'claude',    args: [],        desc: 'claude' },
-  { id: 'codex',    name: 'OpenAI Codex',   icon: '🟢', command: 'codex',     args: [],        desc: 'codex' },
-  { id: 'opencode', name: 'OpenCode',       icon: '🔵', command: 'opencode',  args: [],        desc: 'opencode' },
-  { id: 'hermes',   name: 'Hermes Agent',  icon: '🟣',
-    command: IS_WIN ? 'wsl' : 'hermes',
-    args: IS_WIN ? ['hermes', 'chat'] : ['chat'],
-    desc: IS_WIN ? 'wsl hermes chat' : 'hermes chat' },
-  { id: 'custom',   name: '自定义命令…',    icon: '⚙️', command: '',          args: [],        desc: '' },
+  { id: 'claude',  name: 'Claude Code',  icon: '🟠', command: 'npx', args: ['-y', '@anthropic-ai/claude-code'], desc: 'claude' },
+  { id: 'codex',   name: 'OpenAI Codex', icon: '🟢', command: 'npx', args: ['-y', '@openai/codex'],              desc: 'codex' },
+  { id: 'opencode', name: 'OpenCode',    icon: '🔵', command: 'npx', args: ['-y', 'opencode-ai'],               desc: 'opencode' },
+  { id: 'custom',  name: '自定义命令…',  icon: '⚙️', command: '',    args: [],                                  desc: '' },
 ];
 
 // Load saved agents or use defaults
-const AGENTS_VERSION = 1;
+const AGENTS_VERSION = 3;
 
 function loadAgents() {
   try {
     const version = localStorage.getItem('agent-manager:agents-version');
     if (String(AGENTS_VERSION) === version) {
       const saved = localStorage.getItem('agent-manager:agents');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     }
   } catch (e) {}
   return DEFAULT_AGENTS;
@@ -117,12 +118,11 @@ async function pickCwd(currentCwd) {
 
 // ============ Create Session ============
 async function createSession(agent) {
-  // Pick working directory first
   let cwd = null;
   const pickDir = confirm('是否选择工作目录？\n点击"确定"选择目录，点击"取消"使用默认目录（用户主目录）');
   if (pickDir) {
     cwd = await pickCwd();
-    if (cwd === null) return; // user cancelled the dialog
+    if (cwd === null) return;
   }
 
   state.sessionCounter++;
@@ -131,6 +131,7 @@ async function createSession(agent) {
 
   let result;
   try {
+    console.log('[renderer] calling createSession...');
     result = await window.api.createSession({
       command: agent.command,
       args: agent.args,
@@ -138,10 +139,13 @@ async function createSession(agent) {
       label,
     });
   } catch (e) {
+    console.log('[renderer] createSession error:', e);
     alert(`创建会话失败: ${e.message}`);
     return;
   }
 
+  console.log('[renderer] createSession result:', result);
+  alert('IPC返回结果: ' + JSON.stringify(result));
   if (!result) return;
 
   const id = result.id;
@@ -178,6 +182,22 @@ async function createSession(agent) {
   document.getElementById('terminal-container').appendChild(pane);
 
   terminal.open(pane);
+
+  // 点击 pane 时直接聚焦 textarea（修复 Windows IME 输入法失效）
+  pane.addEventListener('mousedown', () => {
+    terminal.focus();
+    const ta = pane.querySelector('.xterm-helper-textarea');
+    if (ta) ta.focus();
+  });
+
+  // 延迟聚焦 textarea，让 IME 系统正确绑定
+  setTimeout(() => {
+    const ta = pane.querySelector('.xterm-helper-textarea');
+    if (ta) {
+      ta.blur();
+      ta.focus();
+    }
+  }, 300);
 
   // Fit after a short delay to ensure layout
   setTimeout(() => {
@@ -265,8 +285,17 @@ function switchTo(id) {
   const item = document.getElementById(`session-${id}`);
   if (item) item.classList.add('active');
 
-  // Fit terminal
+  // 聚焦终端及 textarea（延迟确保 visibility 切换生效）
   const session = state.sessions.get(id);
+  if (session && session.terminal) {
+    setTimeout(() => {
+      session.terminal.focus();
+      const ta = session.pane.querySelector('.xterm-helper-textarea');
+      if (ta) ta.focus();
+    }, 30);
+  }
+
+  // Fit terminal
   if (session && session.fitAddon) {
     setTimeout(() => {
       try { session.fitAddon.fit(); } catch(e) {}
@@ -359,6 +388,16 @@ function setupListeners() {
         }
       }
     }, 100);
+  });
+
+  // 窗口重新获得焦点时，主动聚焦当前终端（修复 IME 输入法失效）
+  window.addEventListener('focus', () => {
+    if (state.activeId) {
+      const session = state.sessions.get(state.activeId);
+      if (session && session.terminal) {
+        session.terminal.focus();
+      }
+    }
   });
 }
 

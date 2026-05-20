@@ -31,7 +31,11 @@ body {
   color: var(--text-primary);
   height: 100vh;
   overflow: hidden;
-  user-select: none;
+}
+
+/* 终端内允许文本选择 */
+.xterm {
+  user-select: text;
 }
 
 #app {
@@ -321,11 +325,13 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  display: none;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .terminal-pane.active {
-  display: block;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* Empty state */

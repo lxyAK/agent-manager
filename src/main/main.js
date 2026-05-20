@@ -1,7 +1,21 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const os = require('os');
+const { execSync } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
+
+// 检测 Windows 上可用的 PowerShell，优先 pwsh (7+) 再回退 powershell (5.1)
+let _winShell = null;
+function getWinShell() {
+  if (_winShell !== null) return _winShell;
+  try {
+    execSync('where pwsh.exe', { stdio: 'ignore' });
+    _winShell = 'pwsh.exe';
+  } catch {
+    _winShell = 'powershell.exe';
+  }
+  return _winShell;
+}
 
 // node-pty 是 native addon，需要延迟加载以避免干扰 Electron 初始化
 let pty = null;
@@ -44,12 +58,17 @@ function createWindow() {
     icon: path.join(__dirname, '../../assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
+      contextIsolation: false,
+      nodeIntegration: true,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  // Windows 上 Electron 窗口加载后 webContents 可能未获得焦点，导致 IME 失效
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.focus();
+  });
 }
 
 function sendToRenderer(channel, data) {
@@ -60,20 +79,38 @@ function sendToRenderer(channel, data) {
 
 // Spawn a new agent session via node-pty
 ipcMain.handle('session:create', async (event, { command, args = [], cwd, label }) => {
+  console.log('[session:create] called, command:', command, 'cwd:', cwd);
   const safeCommand = sanitizeCommand(command);
   const safeArgs = (args || []).map(sanitizeArg);
 
   const id = uuidv4();
   const isWin = process.platform === 'win32';
-  const shell = isWin ? 'cmd.exe' : (process.env.SHELL || '/bin/bash');
+  const shell = isWin ? getWinShell() : (process.env.SHELL || '/bin/bash');
+  const spawnCwd = cwd || os.homedir();
 
-  const ptyProcess = getPty().spawn(shell, [], {
+  // 构造启动参数：有命令则通过 shell -Command 直接执行，无命令则打开交互式 shell
+  let spawnArgs;
+  if (safeCommand) {
+    const fullCmd = `${safeCommand} ${safeArgs.join(' ')}`;
+    if (isWin) {
+      // PowerShell: -NoLogo 去掉横幅, -NoExit 命令结束后保留 shell
+      const cd = cwd ? `Set-Location '${cwd.replace(/'/g, "''")}'; ` : '';
+      spawnArgs = ['-NoLogo', '-NoExit', '-Command', `${cd}${fullCmd}`];
+    } else {
+      spawnArgs = ['-c', `cd "${spawnCwd}" && ${fullCmd}; exec $SHELL`];
+    }
+  } else {
+    spawnArgs = [];
+  }
+
+  const ptyProcess = getPty().spawn(shell, spawnArgs, {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,
-    cwd: cwd || os.homedir(),
+    cwd: spawnCwd,
     env: { ...process.env },
   });
+  console.log('[session:create] pty spawned, pid:', ptyProcess.pid);
 
   const session = { id, label: label || command, command: safeCommand, args: safeArgs, cwd, ptyProcess };
   sessions.set(id, session);
@@ -86,19 +123,6 @@ ipcMain.handle('session:create', async (event, { command, args = [], cwd, label 
     sendToRenderer('session:exit', { id, exitCode });
     sessions.delete(id);
   });
-
-  // cd to cwd first, then run the command
-  if (safeCommand) {
-    const cwdCmd = cwd ? `cd /d "${cwd}" && ` : '';
-    setTimeout(() => {
-      ptyProcess.write(`${cwdCmd}${safeCommand} ${safeArgs.join(' ')}\r\n`);
-    }, 300);
-  } else if (cwd) {
-    const cwdCmd = isWin ? `cd /d "${cwd}"` : `cd "${cwd}"`;
-    setTimeout(() => {
-      ptyProcess.write(`${cwdCmd}\r\n`);
-    }, 300);
-  }
 
   return { id, label: session.label };
 });
