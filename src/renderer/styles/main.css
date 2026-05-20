@@ -117,7 +117,6 @@ body {
   font-size: 11px;
   color: var(--text-dim);
   font-family: 'Cascadia Code', 'Fira Code', monospace;
-  flex: 1;
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -9,8 +9,18 @@ contextBridge.exposeInMainWorld('api', {
   openDir: () => ipcRenderer.invoke('dialog:openDir'),
   platform: process.platform,
 
-  onData: (callback) => ipcRenderer.on('session:data', (_, data) => callback(data)),
-  onExit: (callback) => ipcRenderer.on('session:exit', (_, data) => callback(data)),
+  onData: (callback) => {
+    const wrapper = (_, data) => callback(data);
+    ipcRenderer.on('session:data', wrapper);
+    return wrapper;
+  },
+  onExit: (callback) => {
+    const wrapper = (_, data) => callback(data);
+    ipcRenderer.on('session:exit', wrapper);
+    return wrapper;
+  },
+  removeDataListener: (wrapper) => ipcRenderer.removeListener('session:data', wrapper),
+  removeExitListener: (wrapper) => ipcRenderer.removeListener('session:exit', wrapper),
 });
 
 // Expose xterm modules to renderer (only available in preload context)

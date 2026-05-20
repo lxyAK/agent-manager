@@ -14,15 +14,21 @@ const DEFAULT_AGENTS = [
 ];
 
 // Load saved agents or use defaults
+const AGENTS_VERSION = 1;
+
 function loadAgents() {
   try {
-    const saved = localStorage.getItem('agent-manager:agents');
-    if (saved) return JSON.parse(saved);
+    const version = localStorage.getItem('agent-manager:agents-version');
+    if (String(AGENTS_VERSION) === version) {
+      const saved = localStorage.getItem('agent-manager:agents');
+      if (saved) return JSON.parse(saved);
+    }
   } catch (e) {}
   return DEFAULT_AGENTS;
 }
 
 function saveAgents(agents) {
+  localStorage.setItem('agent-manager:agents-version', String(AGENTS_VERSION));
   localStorage.setItem('agent-manager:agents', JSON.stringify(agents));
 }
 
@@ -123,12 +129,18 @@ async function createSession(agent) {
   const cwdLabel = cwd ? cwd.replace(/.*[\\/]/, '') : '~';
   const label = `${agent.name} #${state.sessionCounter}`;
 
-  const result = await window.api.createSession({
-    command: agent.command,
-    args: agent.args,
-    cwd: cwd,
-    label,
-  });
+  let result;
+  try {
+    result = await window.api.createSession({
+      command: agent.command,
+      args: agent.args,
+      cwd: cwd,
+      label,
+    });
+  } catch (e) {
+    alert(`创建会话失败: ${e.message}`);
+    return;
+  }
 
   if (!result) return;
 
@@ -184,7 +196,7 @@ async function createSession(agent) {
       try { terminal.write(data); } catch(e) {}
     }
   };
-  window.api.onData(dataListener);
+  const dataWrapper = window.api.onData(dataListener);
 
   // Listen for exit
   const exitListener = ({ id: sid, exitCode }) => {
@@ -193,10 +205,13 @@ async function createSession(agent) {
       updateSessionDot(id, true);
     }
   };
-  window.api.onExit(exitListener);
+  const exitWrapper = window.api.onExit(exitListener);
+
+  // 存储监听器引用以便后续移除
+  const listeners = { dataWrapper, exitWrapper };
 
   // Store state
-  state.sessions.set(id, { id, label, icon: agent.icon, terminal, fitAddon, pane, cwd });
+  state.sessions.set(id, { id, label, icon: agent.icon, terminal, fitAddon, pane, cwd, listeners });
 
   // Update UI
   addTab(id, label, agent.icon, cwd);
@@ -295,6 +310,12 @@ function updateSessionDot(id, dead) {
 async function killSession(id) {
   const session = state.sessions.get(id);
   if (!session) return;
+
+  // 移除 IPC 监听器，防止泄漏
+  if (session.listeners) {
+    window.api.removeDataListener(session.listeners.dataWrapper);
+    window.api.removeExitListener(session.listeners.exitWrapper);
+  }
 
   await window.api.killSession(id);
 
