@@ -1,0 +1,375 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #1a1b26;
+  --bg-secondary: #16161e;
+  --bg-sidebar: #1e1f2e;
+  --bg-tab: #24253a;
+  --bg-tab-active: #1a1b26;
+  --bg-hover: #2a2b3d;
+  --bg-terminal: #1a1b26;
+  --text-primary: #c0caf5;
+  --text-secondary: #a9b1d6;
+  --text-dim: #565f89;
+  --accent: #7aa2f7;
+  --accent-hover: #89b4fa;
+  --green: #9ece6a;
+  --red: #f7768e;
+  --yellow: #e0af68;
+  --border: #2a2b3d;
+  --tab-height: 38px;
+  --sidebar-width: 240px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+/* ========== Sidebar ========== */
+#sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.sidebar-section {
+  padding: 8px 0;
+}
+
+.section-title {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+/* Quick launch */
+.quick-launch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.quick-launch-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.quick-launch-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.quick-launch-item .agent-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.quick-launch-item .agent-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-launch-item .agent-cmd {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  flex: 1;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-launch-item .edit-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.quick-launch-item:hover .edit-btn {
+  display: flex;
+}
+
+.quick-launch-item .edit-btn:hover {
+  color: var(--accent);
+  background: rgba(122, 162, 247, 0.1);
+}
+
+/* Session list */
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.session-item:hover {
+  background: var(--bg-hover);
+}
+
+.session-item.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.session-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.session-item .dot.dead {
+  background: var(--text-dim);
+}
+
+.session-item .session-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-item .close-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.session-item:hover .close-btn {
+  opacity: 1;
+}
+
+.session-item .close-btn:hover {
+  color: var(--red);
+  background: rgba(247, 118, 142, 0.1);
+}
+
+/* ========== Main area ========== */
+#main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Tabs bar */
+.tabs-bar {
+  display: flex;
+  align-items: stretch;
+  height: var(--tab-height);
+  min-height: var(--tab-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tabs-bar::-webkit-scrollbar {
+  height: 0;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  min-width: 0;
+  transition: background 0.15s;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.tab.active {
+  background: var(--bg-tab-active);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tab .tab-icon {
+  font-size: 14px;
+}
+
+.tab .tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab .tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 12px;
+  opacity: 0;
+  transition: all 0.15s;
+  cursor: pointer;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.tab:hover .tab-close {
+  opacity: 0.6;
+}
+
+.tab .tab-close:hover {
+  opacity: 1;
+  background: rgba(247, 118, 142, 0.2);
+  color: var(--red);
+}
+
+/* Terminal container */
+.terminal-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-container .xterm {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+}
+
+.terminal-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+}
+
+.terminal-pane.active {
+  display: block;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}

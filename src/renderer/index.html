@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Manager</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <h1>🤖 Agent Manager</h1>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-title">快速启动</div>
+        <div id="quick-launch" class="quick-launch-list"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-title">活动会话</div>
+        <div id="session-list" class="session-list"></div>
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <main id="main-area">
+      <div id="tabs-bar" class="tabs-bar"></div>
+      <div id="terminal-container" class="terminal-container">
+        <div id="empty-state" class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <h2>选择一个 Agent 开始</h2>
+          <p>从左侧快速启动栏创建新的会话</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>require('./renderer.js');</script>
+</body>
+</html>
