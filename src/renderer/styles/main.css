@@ -129,10 +129,33 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title:hover {
+  color: var(--text-secondary);
+}
+
+.collapse-arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.section-title.collapsed .collapse-arrow {
+  transform: rotate(-90deg);
+}
+
+.sidebar-collapsible {
+  overflow: hidden;
+  transition: max-height 0.25s ease;
 }
 
 /* Quick launch */
-.quick-launch-list {
+#quick-launch {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -157,10 +180,32 @@ body {
 }
 
 .quick-launch-item .agent-icon {
-  font-size: 18px;
   width: 24px;
-  text-align: center;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.agent-svg-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.agent-emoji-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tab-icon .agent-svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.tab-icon .agent-emoji-icon {
+  font-size: 14px;
 }
 
 .quick-launch-item .agent-name {
@@ -248,6 +293,58 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.session-item .feature-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.session-item:hover .feature-btn {
+  opacity: 1;
+}
+
+.session-item .feature-btn:hover {
+  color: var(--accent);
+  background: var(--accent-bg-hover);
+}
+
+.session-item .feature-menu {
+  position: absolute;
+  right: 32px;
+  top: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--shadow);
+  z-index: 100;
+  min-width: 120px;
+  padding: 4px 0;
+}
+
+.session-item {
+  position: relative;
+}
+
+.feature-menu-item {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.feature-menu-item:hover {
+  background: var(--accent-bg-hover);
+  color: var(--text-primary);
 }
 
 .session-item .close-btn {
@@ -354,6 +451,31 @@ body {
   opacity: 1;
   background: var(--red-bg-hover-strong);
   color: var(--red);
+}
+
+/* 空闲状态标签 ✓ 标记 */
+.tab.idle::after {
+  content: '✓';
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 2px;
+  animation: tab-idle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tab-idle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 侧边栏绿点空闲闪烁 */
+.session-item .dot.idle-blink {
+  animation: dot-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes dot-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
 }
 
 /* Terminal container */
@@ -514,4 +636,36 @@ body {
 .cwd-btn-ghost:hover {
   color: var(--text-secondary);
   background: var(--bg-hover);
+}
+
+/* ========== Edit Dialog ========== */
+.edit-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.edit-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.edit-input {
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.edit-input:focus {
+  border-color: var(--accent);
 }

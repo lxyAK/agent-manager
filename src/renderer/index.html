@@ -16,12 +16,12 @@
         <button id="theme-toggle" class="theme-toggle" title="切换主题">☀️</button>
       </div>
       <div class="sidebar-section">
-        <div class="section-title">快速启动</div>
-        <div id="quick-launch" class="quick-launch-list"></div>
+        <div class="section-title" data-toggle="quick-launch">快速启动 <span class="collapse-arrow">▸</span></div>
+        <div id="quick-launch" class="sidebar-collapsible"></div>
       </div>
       <div class="sidebar-section">
-        <div class="section-title">活动会话</div>
-        <div id="session-list" class="session-list"></div>
+        <div class="section-title" data-toggle="session-list">活动会话 <span class="collapse-arrow">▸</span></div>
+        <div id="session-list" class="sidebar-collapsible session-list"></div>
       </div>
     </aside>
 
@@ -47,6 +47,36 @@
         <button id="cwd-btn-pick" class="cwd-btn cwd-btn-primary">选择目录</button>
         <button id="cwd-btn-default" class="cwd-btn cwd-btn-secondary">直接打开</button>
         <button id="cwd-btn-cancel" class="cwd-btn cwd-btn-ghost">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑代理弹窗 -->
+  <div id="edit-dialog-overlay" class="cwd-dialog-overlay" style="display:none;">
+    <div class="cwd-dialog">
+      <div class="cwd-dialog-title">编辑代理</div>
+      <div class="edit-dialog-fields">
+        <label class="edit-label">名称<input id="edit-name" class="edit-input" type="text" /></label>
+        <label class="edit-label">启动命令<input id="edit-cmd" class="edit-input" type="text" /></label>
+        <label class="edit-label">参数（空格分隔）<input id="edit-args" class="edit-input" type="text" /></label>
+      </div>
+      <div class="cwd-dialog-actions" style="flex-direction:row; gap:8px;">
+        <button id="edit-btn-save" class="cwd-btn cwd-btn-primary" style="flex:1;">保存</button>
+        <button id="edit-btn-cancel" class="cwd-btn cwd-btn-ghost" style="flex:1;">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重命名会话弹窗 -->
+  <div id="rename-dialog-overlay" class="cwd-dialog-overlay" style="display:none;">
+    <div class="cwd-dialog">
+      <div class="cwd-dialog-title">重命名会话</div>
+      <div class="edit-dialog-fields">
+        <input id="rename-input" class="edit-input" type="text" placeholder="输入新名称" />
+      </div>
+      <div class="cwd-dialog-actions" style="flex-direction:row; gap:8px;">
+        <button id="rename-btn-ok" class="cwd-btn cwd-btn-primary" style="flex:1;">确定</button>
+        <button id="rename-btn-cancel" class="cwd-btn cwd-btn-ghost" style="flex:1;">取消</button>
       </div>
     </div>
   </div>
