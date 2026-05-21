@@ -5,11 +5,13 @@
  * 创建日期：2026-05-21
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { sessionsApi } from "../../lib/api";
+import type { AgentStatus, SessionInfo } from "../../types";
+import { SendToMenu } from "./SendToMenu";
 import type { Theme } from "../../hooks/useTheme";
 
 /** xterm.js Tokyo Night 主题配色 */
@@ -48,25 +50,37 @@ interface TerminalPaneProps {
   id: string;
   active: boolean;
   theme: Theme;
+  sessions: Map<string, { info: SessionInfo; status: AgentStatus; exited: boolean }>;
   onTerminalReady: (id: string, terminal: Terminal) => void;
   onInput: (data: string) => void;
+  onSendToSession: (targetId: string, text: string) => void;
 }
 
 /**
  * 终端面板组件
- * 管理 xterm.js 实例创建、FitAddon、主题和输入输出
+ * 管理 xterm.js 实例创建、FitAddon、主题、输入输出和右键菜单
  */
 export function TerminalPane({
   id,
   active,
   theme,
+  sessions,
   onTerminalReady,
   onInput,
+  onSendToSession,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const registeredRef = useRef(false);
+
+  // 右键菜单状态
+  const [menuState, setMenuState] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    text: string;
+  }>({ visible: false, x: 0, y: 0, text: "" });
 
   // 初始化终端实例（只执行一次）
   useEffect(() => {
@@ -145,18 +159,61 @@ export function TerminalPane({
     }
   }, [theme]);
 
+  /** 右键菜单处理 */
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const term = terminalRef.current;
+      if (!term || !term.hasSelection()) return;
+
+      setMenuState({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        text: term.getSelection(),
+      });
+    },
+    [],
+  );
+
+  /** 发送文字到目标会话 */
+  const handleSend = useCallback(
+    (targetId: string, text: string) => {
+      sessionsApi.write(targetId, text);
+    },
+    [],
+  );
+
+  /** 复制到剪贴板 */
+  const handleCopy = useCallback((text: string) => {
+    navigator.clipboard.writeText(text);
+  }, []);
+
   return (
     <div
       ref={containerRef}
       className={`w-full h-full ${active ? "block" : "hidden"}`}
       onMouseDown={() => {
-        // 修复 Windows IME：点击时聚焦 textarea
         terminalRef.current?.focus();
         const ta = containerRef.current?.querySelector(
           ".xterm-helper-textarea",
         ) as HTMLTextAreaElement | null;
         if (ta) ta.focus();
       }}
-    />
+      onContextMenu={handleContextMenu}
+    >
+      {menuState.visible && (
+        <SendToMenu
+          x={menuState.x}
+          y={menuState.y}
+          text={menuState.text}
+          sourceId={id}
+          sessions={sessions}
+          onSend={handleSend}
+          onCopy={handleCopy}
+          onClose={() => setMenuState((s) => ({ ...s, visible: false }))}
+        />
+      )}
+    </div>
   );
 }

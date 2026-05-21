@@ -5,10 +5,10 @@
  * 创建日期：2026-05-21
  */
 
-import type { SessionInfo } from "../../types";
+import type { AgentStatus, SessionInfo } from "../../types";
 
 interface TabsBarProps {
-  sessions: Map<string, { info: SessionInfo; idle: boolean; exited: boolean }>;
+  sessions: Map<string, { info: SessionInfo; status: AgentStatus; exited: boolean }>;
   activeId: string | null;
   onSwitch: (id: string) => void;
   onClose: (id: string) => void;
@@ -39,7 +39,7 @@ export function TabsBar({
             activeId === id
               ? "bg-tn-bg text-tn-fg"
               : "text-tn-comment hover:text-tn-fg hover:bg-tn-bg/50"
-          } ${session.idle ? "tab-idle" : ""}`}
+          } ${!session.exited && session.status !== "idle" ? `tab-status-${session.status}` : ""}`}
           onClick={(e) => {
             if ((e.target as HTMLElement).classList.contains("tab-close-btn"))
               return;

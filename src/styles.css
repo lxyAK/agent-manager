@@ -22,22 +22,112 @@ html, body, #root {
 /* xterm 文本选择 */
 .xterm { user-select: text; }
 
-/* 空闲指示器动画 */
+/* ========== 状态指示器动画 ========== */
+
+/* 脉冲动画（通用） */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
 .idle-blink { animation: pulse-dot 1.5s ease-in-out infinite; }
 
-/* 空闲标签页勾选标记 */
-@keyframes checkmark-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+/* 旋转动画（thinking 状态） */
+@keyframes spin-dot {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-.tab-idle::after {
-  content: '✓';
-  font-size: 10px;
-  color: #9ece6a;
+.animate-spin-slow {
+  display: inline-block;
+  animation: spin-dot 3s linear infinite;
+}
+
+/* ========== 标签栏状态样式 ========== */
+
+.tab-status-thinking::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7aa2f7;
+  animation: spin-dot 3s linear infinite;
   margin-left: 4px;
-  animation: checkmark-pulse 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.tab-status-writing::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e0af68;
+  animation: pulse-dot 1s ease-in-out infinite;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.tab-status-waiting_input::after {
+  content: '?';
+  font-size: 11px;
+  font-weight: bold;
+  color: #7dcfff;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+  margin-left: 4px;
+}
+
+.tab-status-error::after {
+  content: '!';
+  font-size: 11px;
+  font-weight: bold;
+  color: #f7768e;
+  margin-left: 4px;
+}
+
+/* ========== 右键菜单样式 ========== */
+
+.send-to-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #1a1b26;
+  border: 1px solid #292e42;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px 0;
+}
+
+.send-to-menu-title {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #565f89;
+  border-bottom: 1px solid #292e42;
+}
+
+.send-to-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #c0caf5;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.send-to-menu-item:hover {
+  background: #292e42;
+}
+
+.send-to-menu-item.disabled {
+  color: #565f89;
+  pointer-events: none;
+}
+
+.send-to-menu-separator {
+  height: 1px;
+  background: #292e42;
+  margin: 4px 0;
 }

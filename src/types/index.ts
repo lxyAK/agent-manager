@@ -1,3 +1,6 @@
+/** Agent 工作状态 */
+export type AgentStatus = 'idle' | 'thinking' | 'writing' | 'waiting_input' | 'error';
+
 /** 会话信息 */
 export interface SessionInfo {
   id: string;

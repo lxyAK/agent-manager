@@ -6,13 +6,14 @@
  */
 
 import { useState, useCallback } from "react";
-import type { AgentPreset, SessionInfo } from "../../types";
+import type { AgentPreset, AgentStatus, SessionInfo } from "../../types";
+import { STATUS_CONFIG } from "../../lib/agentStatus";
 import type { Theme } from "../../hooks/useTheme";
 
 interface SidebarProps {
   agents: AgentPreset[];
   activeId: string | null;
-  sessions: Map<string, { info: SessionInfo; idle: boolean; exited: boolean }>;
+  sessions: Map<string, { info: SessionInfo; status: AgentStatus; exited: boolean }>;
   theme: Theme;
   onLaunch: (agent: AgentPreset) => void;
   onSwitch: (id: string) => void;
@@ -120,19 +121,22 @@ export function Sidebar({
                 onClick={() => onSwitch(id)}
                 title={session.info.cwd || session.info.label}
               >
-                {/* 状态点 */}
+                {/* 状态指示器 */}
                 <span
                   className={`w-2 h-2 rounded-full shrink-0 ${
                     session.exited
-                      ? "bg-tn-red"
-                      : session.idle
-                        ? "bg-tn-green idle-blink"
-                        : "bg-tn-blue"
+                      ? "bg-tn-red/50"
+                      : `${STATUS_CONFIG[session.status].color} ${STATUS_CONFIG[session.status].animation}`
                   }`}
                 />
                 <span className="text-sm truncate flex-1">
                   {session.info.label}
                 </span>
+                {!session.exited && session.status !== "idle" && (
+                  <span className="text-[10px] text-tn-comment shrink-0">
+                    {STATUS_CONFIG[session.status].label}
+                  </span>
+                )}
                 {/* 更多操作 */}
                 <div className="relative">
                   <button

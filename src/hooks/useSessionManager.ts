@@ -9,6 +9,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { sessionsApi } from "../lib/api";
 import type {
+  AgentStatus,
   CreateSessionOptions,
   SessionDataEvent,
   SessionExitEvent,
@@ -19,7 +20,7 @@ import type { UnlistenFn } from "@tauri-apps/api/event";
 /** 会话扩展信息（前端维护） */
 export interface SessionState {
   info: { id: string; label: string; command: string; cwd: string | null };
-  idle: boolean;
+  status: AgentStatus;
   exited: boolean;
 }
 
@@ -99,7 +100,7 @@ export function useSessionManager() {
         const next = new Map(prev);
         next.set(info.id, {
           info: { id: info.id, label: info.label, command: info.command, cwd: info.cwd },
-          idle: false,
+          status: "idle",
           exited: false,
         });
         return next;
@@ -183,16 +184,21 @@ export function useSessionManager() {
     [sessions],
   );
 
-  /** 更新会话空闲状态 */
-  const setIdle = useCallback((id: string, idle: boolean) => {
+  /** 更新会话状态 */
+  const setStatus = useCallback((id: string, status: AgentStatus) => {
     setSessions((prev) => {
       const next = new Map(prev);
       const session = next.get(id);
       if (session) {
-        next.set(id, { ...session, idle });
+        next.set(id, { ...session, status });
       }
       return next;
     });
+  }, []);
+
+  /** 获取终端实例 */
+  const getTerminal = useCallback((id: string): Terminal | undefined => {
+    return terminalRef.current.get(id);
   }, []);
 
   /** 更新会话退出状态 */
@@ -229,7 +235,8 @@ export function useSessionManager() {
     setOnExit,
     switchTo,
     killSession,
-    setIdle,
+    setStatus,
+    getTerminal,
     setExited,
     renameSession,
   };

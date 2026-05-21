@@ -5,13 +5,14 @@
  * 创建日期：2026-05-21
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Terminal } from "@xterm/xterm";
 import type { AgentPreset } from "./types";
 import { useTheme } from "./hooks/useTheme";
 import { useAgentPresets } from "./hooks/useAgentPresets";
 import { useSessionManager } from "./hooks/useSessionManager";
-import { dialogApi } from "./lib/api";
+import { useAgentStatus } from "./hooks/useAgentStatus";
+import { dialogApi, sessionsApi } from "./lib/api";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TabsBar } from "./components/layout/TabsBar";
 import { TerminalPane } from "./components/terminal/TerminalPane";
@@ -39,38 +40,16 @@ function App() {
     setOnExit,
     switchTo,
     killSession,
-    setIdle,
+    setStatus,
+    getTerminal,
     setExited,
     renameSession,
   } = useSessionManager();
 
+  const { feedData, feedInput, resetSession } = useAgentStatus(setStatus);
+
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const pendingAgentRef = useRef<AgentPreset | null>(null);
-
-  /** 空闲检测实例 */
-  const idleDetectionsRef = useRef<
-    Map<
-      string,
-      {
-        notifyInput: (data: string) => void;
-        notifyData: () => void;
-        reset: () => void;
-      }
-    >
-  >(new Map());
-
-  /** 获取或创建空闲检测 */
-  const getOrCreateIdle = useCallback(
-    (id: string) => {
-      if (idleDetectionsRef.current.has(id)) {
-        return idleDetectionsRef.current.get(id)!;
-      }
-      const detection = createSimpleIdleDetection(id, setIdle);
-      idleDetectionsRef.current.set(id, detection);
-      return detection;
-    },
-    [setIdle],
-  );
 
   /** 启动代理 → 弹出 CWD 选择 */
   const handleLaunch = useCallback((agent: AgentPreset) => {
@@ -117,11 +96,11 @@ function App() {
     });
     if (!id) return;
 
-    // 创建空闲检测 + 注册数据/退出回调
-    const idle = getOrCreateIdle(id);
-    setOnData(id, () => idle.notifyData());
+    // 注册数据回调：驱动状态检测
+    setOnData(id, (data) => feedData(id, data));
+    // 注册退出回调
     setOnExit(id, () => {
-      idle.reset();
+      resetSession(id);
       setExited(id);
     });
   };
@@ -129,7 +108,6 @@ function App() {
   /** 终端就绪回调 */
   const handleTerminalReady = useCallback(
     (id: string, terminal: Terminal) => {
-      // 注册终端 + 刷新缓冲数据
       registerTerminal(id, terminal);
     },
     [registerTerminal],
@@ -138,10 +116,9 @@ function App() {
   /** 终端输入回调 */
   const handleTerminalInput = useCallback(
     (id: string, data: string) => {
-      const idle = idleDetectionsRef.current.get(id);
-      idle?.notifyInput(data);
+      feedInput(id, data);
     },
-    [],
+    [feedInput],
   );
 
   /** 编辑代理 */
@@ -176,6 +153,36 @@ function App() {
     },
     [dialog, renameSession],
   );
+
+  // Ctrl+Shift+数字 快捷键：发送选中文字到目标会话
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || !e.shiftKey) return;
+      const key = e.key;
+      if (key < "1" || key > "9") return;
+      e.preventDefault();
+
+      const terminal = activeId ? getTerminal(activeId) : undefined;
+      if (!terminal || !terminal.hasSelection()) return;
+
+      const text = terminal.getSelection();
+      if (!text) return;
+
+      // 活跃且非当前、未退出的会话列表
+      const entries = Array.from(sessions.entries()).filter(
+        ([id, s]) => id !== activeId && !s.exited,
+      );
+      const index = parseInt(key) - 1;
+      if (index >= entries.length) return;
+
+      const [targetId] = entries[index];
+      sessionsApi.write(targetId, text);
+      switchTo(targetId);
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeId, sessions, getTerminal, switchTo]);
 
   const sessionEntries = Array.from(sessions.entries());
   const hasSessions = sessionEntries.length > 0;
@@ -212,8 +219,10 @@ function App() {
                 id={id}
                 active={id === activeId}
                 theme={theme}
+                sessions={sessions}
                 onTerminalReady={handleTerminalReady}
                 onInput={(data) => handleTerminalInput(id, data)}
+                onSendToSession={(targetId, text) => sessionsApi.write(targetId, text)}
               />
             ))
           ) : (
@@ -252,63 +261,6 @@ function App() {
       />
     </div>
   );
-}
-
-// ========== 简化版空闲检测 ==========
-
-const IDLE_SILENCE_MS = 6000;
-const IDLE_CONFIRM_MS = 15000;
-
-/**
- * 创建空闲检测实例
- * @param sessionId 会话 ID
- * @param onIdleChange 空闲状态变化回调
- */
-function createSimpleIdleDetection(
-  sessionId: string,
-  onIdleChange: (id: string, idle: boolean) => void,
-) {
-  let phase: "idle" | "active" = "idle";
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastDataTime = 0;
-
-  const clearTimer = () => {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  };
-
-  const onSilence = () => {
-    const elapsed = Date.now() - lastDataTime;
-    if (elapsed >= IDLE_CONFIRM_MS) {
-      phase = "idle";
-      onIdleChange(sessionId, true);
-    } else {
-      timer = setTimeout(onSilence, IDLE_CONFIRM_MS - elapsed);
-    }
-  };
-
-  return {
-    notifyInput: (data: string) => {
-      if (data.includes("\r") || data.includes("\n")) {
-        phase = "active";
-        clearTimer();
-        onIdleChange(sessionId, false);
-      }
-    },
-    notifyData: () => {
-      if (phase === "idle") return;
-      lastDataTime = Date.now();
-      clearTimer();
-      onIdleChange(sessionId, false);
-      timer = setTimeout(onSilence, IDLE_SILENCE_MS);
-    },
-    reset: () => {
-      clearTimer();
-      phase = "idle";
-    },
-  };
 }
 
 export default App;
