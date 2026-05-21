@@ -6,6 +6,7 @@
  */
 
 import type { AgentStatus, SessionInfo } from "../../types";
+import { STATUS_CONFIG } from "../../lib/agentStatus";
 
 interface TabsBarProps {
   sessions: Map<string, { info: SessionInfo; status: AgentStatus; exited: boolean }>;
@@ -52,6 +53,13 @@ export function TabsBar({
           }}
           title={session.info.cwd || session.info.label}
         >
+          <span
+            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+              session.exited
+                ? "bg-tn-red/50"
+                : `${STATUS_CONFIG[session.status].color} ${STATUS_CONFIG[session.status].animation}`
+            }`}
+          />
           <span className="truncate max-w-[120px]">{session.info.label}</span>
           <button
             className="tab-close-btn opacity-0 hover:opacity-100 text-xs text-tn-comment hover:text-tn-red transition-opacity ml-1"

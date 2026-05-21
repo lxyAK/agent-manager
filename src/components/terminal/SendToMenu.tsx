@@ -3,7 +3,7 @@
  * 描述：右键上下文菜单，将选中文字发送到其他会话终端
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import type { AgentStatus, SessionInfo } from "../../types";
 import { STATUS_CONFIG } from "../../lib/agentStatus";
 
@@ -50,7 +50,7 @@ export function SendToMenu({
     };
   }, [onClose]);
 
-  const adjustedPos = useCallback(() => {
+  const pos = useMemo(() => {
     const menuW = 200;
     const menuH = sessions.size * 36 + 80;
     const vx = window.innerWidth;
@@ -60,8 +60,6 @@ export function SendToMenu({
       top: y + menuH > vy ? y - menuH : y,
     };
   }, [x, y, sessions.size]);
-
-  const pos = adjustedPos();
 
   const targets = Array.from(sessions.entries()).filter(
     ([id, s]) => id !== sourceId && !s.exited,

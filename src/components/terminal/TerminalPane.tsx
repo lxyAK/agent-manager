@@ -5,7 +5,7 @@
  * 创建日期：2026-05-21
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -53,21 +53,20 @@ interface TerminalPaneProps {
   sessions: Map<string, { info: SessionInfo; status: AgentStatus; exited: boolean }>;
   onTerminalReady: (id: string, terminal: Terminal) => void;
   onInput: (data: string) => void;
-  onSendToSession: (targetId: string, text: string) => void;
 }
 
 /**
  * 终端面板组件
  * 管理 xterm.js 实例创建、FitAddon、主题、输入输出和右键菜单
+ * 使用 React.memo 避免无关 sessions Map 变更触发重渲染
  */
-export function TerminalPane({
+export const TerminalPane = memo(function TerminalPane({
   id,
   active,
   theme,
   sessions,
   onTerminalReady,
   onInput,
-  onSendToSession,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -101,6 +100,14 @@ export function TerminalPane({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    // 先 fit 确定正确尺寸，再注册终端（触发缓冲刷新），避免数据以错误尺寸渲染
+    try {
+      fitAddon.fit();
+      sessionsApi.resize(id, terminal.cols, terminal.rows);
+    } catch {
+      // DOM 尚未布局完成，延迟重试
+    }
+
     // 终端输入 → PTY
     terminal.onData((data) => {
       sessionsApi.write(id, data);
@@ -120,7 +127,31 @@ export function TerminalPane({
       }
     }, 100);
 
+    /** 终端 fit + PTY resize（带防抖） */
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const fitAndResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        try {
+          fitAddon.fit();
+          sessionsApi.resize(id, terminal.cols, terminal.rows);
+        } catch {
+          // 忽略
+        }
+      }, 50);
+    };
+
+    // 容器尺寸变化
+    const observer = new ResizeObserver(fitAndResize);
+    observer.observe(containerRef.current);
+
+    // 窗口尺寸变化（备用，处理 ResizeObserver 未触发的场景）
+    window.addEventListener("resize", fitAndResize);
+
     return () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      window.removeEventListener("resize", fitAndResize);
+      observer.disconnect();
       try {
         terminal.dispose();
       } catch {
@@ -189,6 +220,11 @@ export function TerminalPane({
     navigator.clipboard.writeText(text);
   }, []);
 
+  /** 关闭右键菜单 */
+  const handleCloseMenu = useCallback(() => {
+    setMenuState((s) => ({ ...s, visible: false }));
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -211,9 +247,9 @@ export function TerminalPane({
           sessions={sessions}
           onSend={handleSend}
           onCopy={handleCopy}
-          onClose={() => setMenuState((s) => ({ ...s, visible: false }))}
+          onClose={handleCloseMenu}
         />
       )}
     </div>
   );
-}
+});

@@ -49,6 +49,8 @@ export function useAgentStatus(
   const startSilenceTimer = useCallback((id: string, fsm: StatusFSM) => {
     clearTimer(fsm);
     fsm.timer = setTimeout(() => {
+      // resetSession 已删除该 FSM，跳过
+      if (!fsmsRef.current.has(id)) return;
       // thinking/writing 超时回退到 idle；waiting_input/error 不回退
       if (fsm.status === "thinking" || fsm.status === "writing") {
         updateStatus(id, fsm, "idle");

@@ -11,12 +11,12 @@ export function stripAnsi(str: string): string {
 // ========== 状态模式定义（按优先级排列） ==========
 
 const ERROR_PATTERNS = [
-  /\berror\b/i,
-  /\bfatal\b/i,
+  /^error:/mi,                       // 行首 error:（工具/编译器格式）
+  /\bfatal\s*(error)?\s*:/i,         // fatal / fatal error:
   /\bFAILED\b/,
   /\bpanic\b/i,
   /\bTraceback\b/,
-  /\bException\b/,
+  /\bException\b.*:\s*\S/,           // Exception ...: xxx（带具体信息）
   /\bPermission denied\b/,
   /\bcommand not found\b/,
   /\bNo such file\b/,
@@ -72,10 +72,10 @@ const THINKING_PATTERNS = [
 
 const SHELL_PROMPT_PATTERNS = [
   /❯\s*$/,                           // Claude Code shell
-  />\s*$/,                            // 通用
   /\$\s*$/,                           // bash/zsh
   /PS\s.*>\s*$/,                      // PowerShell
   /▶\s*$/,                            // Nushell
+  /^[^<>=!]*>\s*$/,                   // 通用 >（排除含比较运算符的行）
 ];
 
 /** 检测最后一行是否为 Shell 提示符 */
@@ -90,8 +90,8 @@ function isShellPrompt(lines: string[]): boolean {
 
 /** 检测一组行是否匹配任意模式 */
 function matchesAny(lines: string[], patterns: RegExp[]): boolean {
-  // 只检查最近 20 行
-  const recent = lines.slice(-20);
+  // 只检查最近 3 行，降低误报率
+  const recent = lines.slice(-3);
   const text = recent.join("\n");
   return patterns.some((re) => re.test(text));
 }

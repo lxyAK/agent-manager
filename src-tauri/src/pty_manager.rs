@@ -76,7 +76,8 @@ impl PtyManager {
                     .as_ref()
                     .map(|d| format!("Set-Location '{}'; ", d.replace('\'', "''")))
                     .unwrap_or_default();
-                cmd = CommandBuilder::new("powershell");
+                let shell = detect_shell();
+                cmd = CommandBuilder::new(&shell);
                 cmd.args(&[
                     "-NoLogo",
                     "-NoExit",

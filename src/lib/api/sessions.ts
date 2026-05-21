@@ -29,6 +29,10 @@ export const sessionsApi = {
   list: (): Promise<SessionInfo[]> =>
     invoke("session_list"),
 
+  /** 任务栏图标闪烁，请求用户注意力 */
+  requestAttention: (): Promise<void> =>
+    invoke("request_attention"),
+
   /** 监听 PTY 数据输出 */
   onData: (callback: (event: SessionDataEvent) => void): Promise<UnlistenFn> =>
     listen<SessionDataEvent>("session:data", (e) => callback(e.payload)),

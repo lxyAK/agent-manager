@@ -7,12 +7,14 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Terminal } from "@xterm/xterm";
-import type { AgentPreset } from "./types";
+import { sendNotification } from "@tauri-apps/plugin-notification";
+import type { AgentPreset, AgentStatus } from "./types";
 import { useTheme } from "./hooks/useTheme";
 import { useAgentPresets } from "./hooks/useAgentPresets";
 import { useSessionManager } from "./hooks/useSessionManager";
 import { useAgentStatus } from "./hooks/useAgentStatus";
 import { dialogApi, sessionsApi } from "./lib/api";
+import { STATUS_CONFIG } from "./lib/agentStatus";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TabsBar } from "./components/layout/TabsBar";
 import { TerminalPane } from "./components/terminal/TerminalPane";
@@ -46,7 +48,39 @@ function App() {
     renameSession,
   } = useSessionManager();
 
-  const { feedData, feedInput, resetSession } = useAgentStatus(setStatus);
+  const prevStatusRef = useRef<Map<string, AgentStatus>>(new Map());
+  const activeSinceRef = useRef<Map<string, number>>(new Map());
+
+  const { feedData, feedInput, resetSession } = useAgentStatus(
+    useCallback((id: string, status: AgentStatus) => {
+      const prev = prevStatusRef.current.get(id);
+      prevStatusRef.current.set(id, status);
+      setStatus(id, status);
+
+      const label = sessions.get(id)?.info.label ?? "Agent";
+
+      // 记录进入活跃状态的时间
+      if (status !== "idle" && (!prev || prev === "idle")) {
+        activeSinceRef.current.set(id, Date.now());
+      }
+
+      // waiting_input / error 时发送系统通知
+      if (status === "waiting_input" || status === "error") {
+        const config = STATUS_CONFIG[status];
+        sendNotification({ title: `${label} — ${config.label}`, body: "点击查看详情" });
+        return;
+      }
+
+      // 活跃超过 5 秒后回到 idle → 任务完成通知 + 任务栏闪烁
+      if (status === "idle" && prev && prev !== "idle") {
+        const since = activeSinceRef.current.get(id) ?? 0;
+        if (Date.now() - since > 5000) {
+          sendNotification({ title: `${label} — 任务完成`, body: "Agent 已回到空闲状态" });
+          sessionsApi.requestAttention();
+        }
+      }
+    }, [sessions, setStatus]),
+  );
 
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const pendingAgentRef = useRef<AgentPreset | null>(null);
@@ -85,7 +119,7 @@ function App() {
   }, []);
 
   /** 创建会话 */
-  const doCreateSession = async (agent: AgentPreset, cwd: string | null) => {
+  const doCreateSession = useCallback(async (agent: AgentPreset, cwd: string | null) => {
     const counter = sessionCounter + 1;
     const label = `${agent.name} #${counter}`;
     const id = await createSession({
@@ -103,7 +137,7 @@ function App() {
       resetSession(id);
       setExited(id);
     });
-  };
+  }, [sessionCounter, createSession, setOnData, feedData, setOnExit, resetSession, setExited]);
 
   /** 终端就绪回调 */
   const handleTerminalReady = useCallback(
@@ -222,7 +256,6 @@ function App() {
                 sessions={sessions}
                 onTerminalReady={handleTerminalReady}
                 onInput={(data) => handleTerminalInput(id, data)}
-                onSendToSession={(targetId, text) => sessionsApi.write(targetId, text)}
               />
             ))
           ) : (

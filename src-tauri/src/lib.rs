@@ -2,7 +2,56 @@ mod pty_manager;
 
 use pty_manager::{CreateSessionOptions, PtyManager, SessionInfo};
 
+use tauri::Manager as _;
 use tauri::State;
+
+// ========== Windows 任务栏闪烁 ==========
+
+/// Win32 FlashWindowEx 所需参数
+#[cfg(target_os = "windows")]
+#[repr(C)]
+struct FlashInfo {
+    cb_size: u32,
+    hwnd: isize,
+    flags: u32,
+    count: u32,
+    timeout: u32,
+}
+
+/// 同时闪烁标题栏和任务栏按钮
+#[cfg(target_os = "windows")]
+const FLASHW_ALL: u32 = 0x00000003;
+/// 持续闪烁直到用户聚焦窗口
+#[cfg(target_os = "windows")]
+const FLASHW_TIMERNOFG: u32 = 0x0000000C;
+
+#[cfg(target_os = "windows")]
+#[link(name = "user32")]
+extern "system" {
+    fn FlashWindowEx(info: *mut FlashInfo) -> i32;
+}
+
+/// 请求用户注意力：任务栏图标黄色闪烁，直到用户点击窗口
+#[tauri::command]
+fn request_attention(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let window = app.get_webview_window("main").ok_or("窗口未找到")?;
+        let hwnd = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+        let mut info = FlashInfo {
+            cb_size: std::mem::size_of::<FlashInfo>() as u32,
+            hwnd,
+            flags: FLASHW_ALL | FLASHW_TIMERNOFG,
+            count: 0,
+            timeout: 0,
+        };
+        unsafe {
+            FlashWindowEx(&mut info);
+        }
+    }
+    #[allow(unreachable_code)]
+    Ok(())
+}
 
 /// 应用状态
 struct AppState {
@@ -74,6 +123,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .manage(AppState {
             pty_manager: PtyManager::new(),
         })
@@ -84,6 +134,7 @@ pub fn run() {
             session_kill,
             session_list,
             dialog_open_dir,
+            request_attention,
         ])
         .run(tauri::generate_context!())
         .expect("启动 Agent Manager 失败");
