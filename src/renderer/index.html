@@ -13,6 +13,7 @@
     <aside id="sidebar">
       <div class="sidebar-header">
         <h1>🤖 Agent Manager</h1>
+        <button id="theme-toggle" class="theme-toggle" title="切换主题">☀️</button>
       </div>
       <div class="sidebar-section">
         <div class="section-title">快速启动</div>
@@ -35,6 +36,19 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- 工作目录选择弹窗 -->
+  <div id="cwd-dialog-overlay" class="cwd-dialog-overlay" style="display:none;">
+    <div id="cwd-dialog" class="cwd-dialog">
+      <div class="cwd-dialog-title">选择工作目录</div>
+      <div class="cwd-dialog-desc">为新的代理会话指定工作目录</div>
+      <div class="cwd-dialog-actions">
+        <button id="cwd-btn-pick" class="cwd-btn cwd-btn-primary">选择目录</button>
+        <button id="cwd-btn-default" class="cwd-btn cwd-btn-secondary">直接打开</button>
+        <button id="cwd-btn-cancel" class="cwd-btn cwd-btn-ghost">取消</button>
+      </div>
+    </div>
   </div>
 
   <script>require('./renderer.js');</script>

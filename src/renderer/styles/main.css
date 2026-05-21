@@ -4,6 +4,7 @@
   box-sizing: border-box;
 }
 
+/* ========== 暗色主题（默认，Tokyo Night） ========== */
 :root {
   --bg-primary: #1a1b26;
   --bg-secondary: #16161e;
@@ -21,8 +22,40 @@
   --red: #f7768e;
   --yellow: #e0af68;
   --border: #2a2b3d;
+  --accent-bg-hover: rgba(122, 162, 247, 0.1);
+  --red-bg-hover: rgba(247, 118, 142, 0.1);
+  --red-bg-hover-strong: rgba(247, 118, 142, 0.2);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --shadow: rgba(0, 0, 0, 0.4);
+  --btn-primary-text: #fff;
   --tab-height: 38px;
   --sidebar-width: 240px;
+}
+
+/* ========== 浅色主题（Tokyo Night Light） ========== */
+[data-theme="light"] {
+  --bg-primary: #e1e2e7;
+  --bg-secondary: #d5d6db;
+  --bg-sidebar: #e8e9ed;
+  --bg-tab: #c4c5ca;
+  --bg-tab-active: #e1e2e7;
+  --bg-hover: #c8c9ce;
+  --bg-terminal: #e1e2e7;
+  --text-primary: #3760bf;
+  --text-secondary: #6172b0;
+  --text-dim: #a1a6c4;
+  --accent: #2e7de9;
+  --accent-hover: #3b84e0;
+  --green: #587539;
+  --red: #f52a65;
+  --yellow: #8c6c3e;
+  --border: #cbccd0;
+  --accent-bg-hover: rgba(46, 125, 233, 0.08);
+  --red-bg-hover: rgba(245, 42, 101, 0.08);
+  --red-bg-hover-strong: rgba(245, 42, 101, 0.15);
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+  --shadow: rgba(0, 0, 0, 0.15);
+  --btn-primary-text: #fff;
 }
 
 body {
@@ -57,12 +90,32 @@ body {
 .sidebar-header {
   padding: 16px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sidebar-header h1 {
   font-size: 16px;
   font-weight: 600;
   color: var(--accent);
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  background: var(--accent-bg-hover);
 }
 
 .sidebar-section {
@@ -146,7 +199,7 @@ body {
 
 .quick-launch-item .edit-btn:hover {
   color: var(--accent);
-  background: rgba(122, 162, 247, 0.1);
+  background: var(--accent-bg-hover);
 }
 
 /* Session list */
@@ -216,7 +269,7 @@ body {
 
 .session-item .close-btn:hover {
   color: var(--red);
-  background: rgba(247, 118, 142, 0.1);
+  background: var(--red-bg-hover);
 }
 
 /* ========== Main area ========== */
@@ -299,7 +352,7 @@ body {
 
 .tab .tab-close:hover {
   opacity: 1;
-  background: rgba(247, 118, 142, 0.2);
+  background: var(--red-bg-hover-strong);
   color: var(--red);
 }
 
@@ -377,4 +430,88 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
+}
+
+/* ========== CWD Dialog ========== */
+.cwd-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.cwd-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px var(--shadow);
+}
+
+.cwd-dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.cwd-dialog-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.cwd-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cwd-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.cwd-btn-primary {
+  background: var(--accent);
+  color: var(--btn-primary-text);
+  border-color: var(--accent);
+}
+
+.cwd-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.cwd-btn-secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.cwd-btn-secondary:hover {
+  background: var(--accent-bg-hover);
+}
+
+.cwd-btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+}
+
+.cwd-btn-ghost:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
 }

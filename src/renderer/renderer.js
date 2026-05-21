@@ -2,6 +2,70 @@ const { Terminal } = require('@xterm/xterm');
 const { FitAddon } = require('@xterm/addon-fit');
 const { WebLinksAddon } = require('@xterm/addon-web-links');
 
+// ============ Theme ============
+const TERMINAL_THEMES = {
+  dark: {
+    background: '#1a1b26',
+    foreground: '#c0caf5',
+    cursor: '#c0caf5',
+    selectionBackground: '#33467c',
+    black: '#15161e',
+    red: '#f7768e',
+    green: '#9ece6a',
+    yellow: '#e0af68',
+    blue: '#7aa2f7',
+    magenta: '#bb9af7',
+    cyan: '#7dcfff',
+    white: '#a9b1d6',
+  },
+  light: {
+    background: '#e1e2e7',
+    foreground: '#3760bf',
+    cursor: '#3760bf',
+    selectionBackground: '#99a7df',
+    black: '#d5d6db',
+    red: '#f52a65',
+    green: '#587539',
+    yellow: '#8c6c3e',
+    blue: '#2e7de9',
+    magenta: '#9854f1',
+    cyan: '#007197',
+    white: '#6172b0',
+  },
+};
+
+function getCurrentTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'dark';
+}
+
+function applyTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('agent-manager:theme', name);
+  const theme = TERMINAL_THEMES[name] || TERMINAL_THEMES.dark;
+  for (const session of state.sessions.values()) {
+    if (session.terminal) {
+      session.terminal.options.theme = theme;
+    }
+  }
+  updateThemeToggleIcon();
+}
+
+function updateThemeToggleIcon() {
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = getCurrentTheme() === 'dark' ? '☀️' : '🌙';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('agent-manager:theme');
+  if (saved === 'light' || saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+  updateThemeToggleIcon();
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    applyTheme(getCurrentTheme() === 'dark' ? 'light' : 'dark');
+  });
+}
+
 // ============ Agent presets (platform-aware) ============
 const IS_WIN = window.api.platform === 'win32';
 const DEFAULT_AGENTS = [
@@ -44,6 +108,7 @@ const state = {
 
 // ============ Init ============
 function init() {
+  initTheme();
   renderQuickLaunch();
   setupListeners();
 }
@@ -116,11 +181,34 @@ async function pickCwd(currentCwd) {
   return dir; // null if cancelled
 }
 
+// ============ CWD Dialog ============
+/**
+ * 显示工作目录选择弹窗
+ * @returns {'pick'|'default'|'cancel'} 用户选择的结果
+ */
+function showCwdDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('cwd-dialog-overlay');
+    overlay.style.display = 'flex';
+
+    const cleanup = (value) => {
+      overlay.style.display = 'none';
+      resolve(value);
+    };
+
+    document.getElementById('cwd-btn-pick').onclick = () => cleanup('pick');
+    document.getElementById('cwd-btn-default').onclick = () => cleanup('default');
+    document.getElementById('cwd-btn-cancel').onclick = () => cleanup('cancel');
+    overlay.onclick = (e) => { if (e.target === overlay) cleanup('cancel'); };
+  });
+}
+
 // ============ Create Session ============
 async function createSession(agent) {
   let cwd = null;
-  const pickDir = confirm('是否选择工作目录？\n点击"确定"选择目录，点击"取消"使用默认目录（用户主目录）');
-  if (pickDir) {
+  const choice = await showCwdDialog();
+  if (choice === 'cancel') return;
+  if (choice === 'pick') {
     cwd = await pickCwd();
     if (cwd === null) return;
   }
@@ -145,7 +233,7 @@ async function createSession(agent) {
   }
 
   console.log('[renderer] createSession result:', result);
-  alert('IPC返回结果: ' + JSON.stringify(result));
+  // alert('IPC返回结果: ' + JSON.stringify(result));
   if (!result) return;
 
   const id = result.id;
@@ -155,20 +243,7 @@ async function createSession(agent) {
     cursorBlink: true,
     fontSize: 14,
     fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    theme: {
-      background: '#1a1b26',
-      foreground: '#c0caf5',
-      cursor: '#c0caf5',
-      selectionBackground: '#33467c',
-      black: '#15161e',
-      red: '#f7768e',
-      green: '#9ece6a',
-      yellow: '#e0af68',
-      blue: '#7aa2f7',
-      magenta: '#bb9af7',
-      cyan: '#7dcfff',
-      white: '#a9b1d6',
-    },
+    theme: TERMINAL_THEMES[getCurrentTheme()],
   });
 
   const fitAddon = new FitAddon();
