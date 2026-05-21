@@ -1,0 +1,43 @@
+@import "@xterm/xterm/css/xterm.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局基础样式 */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #292e42; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3b4261; }
+
+/* xterm 文本选择 */
+.xterm { user-select: text; }
+
+/* 空闲指示器动画 */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.idle-blink { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+/* 空闲标签页勾选标记 */
+@keyframes checkmark-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.tab-idle::after {
+  content: '✓';
+  font-size: 10px;
+  color: #9ece6a;
+  margin-left: 4px;
+  animation: checkmark-pulse 2s ease-in-out infinite;
+}
