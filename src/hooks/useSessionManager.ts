@@ -45,9 +45,10 @@ export function useSessionManager() {
   useEffect(() => {
     let unlistenData: UnlistenFn | null = null;
     let unlistenExit: UnlistenFn | null = null;
+    let cancelled = false;
 
     const setup = async () => {
-      unlistenData = await sessionsApi.onData(
+      const unsubData = await sessionsApi.onData(
         (event: SessionDataEvent) => {
           const { id, data } = event;
           const terminal = terminalRef.current.get(id);
@@ -72,17 +73,28 @@ export function useSessionManager() {
         },
       );
 
-      unlistenExit = await sessionsApi.onExit(
+      const unsubExit = await sessionsApi.onExit(
         (event: SessionExitEvent) => {
           const { id, exit_code } = event;
           onExitRef.current.get(id)?.(exit_code);
         },
       );
+
+      // StrictMode cleanup 在 async resolve 前触发，此时立即释放
+      if (cancelled) {
+        unsubData();
+        unsubExit();
+        return;
+      }
+
+      unlistenData = unsubData;
+      unlistenExit = unsubExit;
     };
 
     setup();
 
     return () => {
+      cancelled = true;
       unlistenData?.();
       unlistenExit?.();
     };

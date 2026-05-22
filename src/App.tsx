@@ -245,7 +245,7 @@ function App() {
           onRename={handleRename}
         />
 
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden">
           {hasSessions ? (
             sessionEntries.map(([id]) => (
               <TerminalPane

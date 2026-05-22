@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { sessionsApi } from "../../lib/api";
 import type { AgentStatus, SessionInfo } from "../../types";
 import { SendToMenu } from "./SendToMenu";
@@ -97,6 +98,20 @@ export const TerminalPane = memo(function TerminalPane({
     terminal.loadAddon(new WebLinksAddon());
 
     terminal.open(containerRef.current);
+
+    // WebGL 渲染器，解决 Windows canvas 渲染 DPI/缩放问题
+    try {
+      const webgl = new WebglAddon();
+      webgl.onContextLoss(() => {
+        console.warn(`[TerminalPane] WebGL context lost: ${id}`);
+        webgl.dispose();
+      });
+      terminal.loadAddon(webgl);
+      console.log(`[TerminalPane] WebGL renderer loaded: ${id}`);
+    } catch (e) {
+      console.warn(`[TerminalPane] WebGL unavailable, fallback to canvas: ${id}`, e);
+    }
+
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
@@ -104,14 +119,54 @@ export const TerminalPane = memo(function TerminalPane({
     try {
       fitAddon.fit();
       sessionsApi.resize(id, terminal.cols, terminal.rows);
-    } catch {
-      // DOM 尚未布局完成，延迟重试
+    } catch (e) {
+      console.warn(`[TerminalPane] Initial fit failed: ${id}`, e);
     }
+
+    console.log(
+      `[TerminalPane] Initialized: ${id}`,
+      `cols=${terminal.cols}, rows=${terminal.rows}`,
+      `container=${containerRef.current.offsetWidth}x${containerRef.current.offsetHeight}`,
+      `dpr=${window.devicePixelRatio}`,
+    );
 
     // 终端输入 → PTY
     terminal.onData((data) => {
       sessionsApi.write(id, data);
       onInput(data);
+    });
+
+    // 快捷键：复制 / 粘贴 / 全选
+    terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      if (event.type !== "keydown") return true;
+
+      // Ctrl+C 复制选中文字，无选中时交给终端处理（发送 SIGINT）
+      if (event.ctrlKey && !event.shiftKey && event.key === "c") {
+        if (terminal.hasSelection()) {
+          navigator.clipboard.writeText(terminal.getSelection()).catch(() => {});
+          return false;
+        }
+        return true;
+      }
+
+      // Ctrl+A 全选
+      if (event.ctrlKey && !event.shiftKey && event.key === "a") {
+        terminal.selectAll();
+        return false;
+      }
+
+      // Ctrl+V / Shift+Insert 粘贴
+      const isCtrlV = event.ctrlKey && !event.shiftKey && event.key === "v";
+      const isShiftInsert = event.shiftKey && !event.ctrlKey && event.key === "Insert";
+      if (isCtrlV || isShiftInsert) {
+        event.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+          if (text) sessionsApi.write(id, text);
+        }).catch(() => {});
+        return false;
+      }
+
+      return true;
     });
 
     onTerminalReady(id, terminal);
@@ -228,7 +283,7 @@ export const TerminalPane = memo(function TerminalPane({
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full ${active ? "block" : "hidden"}`}
+      className={`absolute inset-0 ${active ? "z-10" : "pointer-events-none opacity-0 z-0"}`}
       onMouseDown={() => {
         terminalRef.current?.focus();
         const ta = containerRef.current?.querySelector(
